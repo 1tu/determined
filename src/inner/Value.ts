@@ -1,7 +1,8 @@
 import { config } from '../config';
-import { EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, NOT_CHANGED } from "./types";
+import { EEngineJob, EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, NOT_CHANGED } from "./types";
 import { isFunction } from "../util/util";
 import { Emitter } from './Emitter';
+import { engine } from './Engine';
 
 export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V> {
   private _get?: ILambda<V>;
@@ -34,7 +35,11 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
 
   public override poll(skip?: boolean) {
     super.poll(skip);
-    if (this.state !== EValueState.Actual) {
+    // если выполняем задачу по разлинковке, нам нужно в любом случае проходить до самого корня
+    // подграфа который перестал наблюдаться
+    if (engine.job === EEngineJob.Unlink) {
+      if (this._get) this._get();
+    } else if (this.state !== EValueState.Actual) {
       try {
         return this._next(this._get());
       } catch (e) {

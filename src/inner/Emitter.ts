@@ -1,5 +1,5 @@
 import { engine } from './Engine';
-import { IEmitter, IEmitterProps, IReciever } from "./types";
+import { EEngineJob, IEmitter, IEmitterProps, IReciever } from "./types";
 import { EMPTY_OBJECT } from '../util/util';
 
 export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
@@ -23,6 +23,6 @@ export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
 
   public outputDelete(r: IReciever) {
     this.outputSet.delete(r);
-    if (!this.outputSet.size) engine.emitter2Unlink(this);
+    if (!this.outputSet.size && engine.job === EEngineJob.Link) engine.emitter2Unlink(this);
   }
 }

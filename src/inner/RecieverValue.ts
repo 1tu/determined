@@ -1,6 +1,7 @@
-import { EValueState, ILambda, IRecieverProps, IRecieverValue, IValue, NOT_CHANGED } from './types';
+import { EEngineJob, EValueState, ILambda, IRecieverProps, IRecieverValue, IValue, NOT_CHANGED } from './types';
 import { EMPTY_OBJECT } from '../util/util';
 import { Reciever } from './Reciever';
+import { engine } from './Engine';
 
 export class RecieverValue<V> extends Reciever<V> implements IRecieverValue<V> {
   private _pulling = false;
@@ -43,7 +44,7 @@ export class RecieverValue<V> extends Reciever<V> implements IRecieverValue<V> {
     // если нет зависимых от нас
     else {
       this._inputSetPrev = undefined;
-      value.state = this.inputSet.size ? EValueState.Dirty : EValueState.Actual;
+      value.state = EValueState.Dirty;
     }
     this._pulling = false;
   }

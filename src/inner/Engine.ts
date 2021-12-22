@@ -40,12 +40,12 @@ class Engine {
     } finally {
       // ВСПЛЫВАЕМ обратно
       r.lift();
-      if (recieverPrev === undefined) {
+      this._reciever = recieverPrev;
+      if (!this._reciever) {
         // поидее в этот момент обход закончился и можно запускать Unlink
         // TODO: nextTick?
         this._emitterUnlink();
       }
-      this._reciever = recieverPrev;
     }
   }
 
@@ -60,23 +60,22 @@ class Engine {
 
   private _unlink(e: IEmitter) {
     if (this._reciever) {
-      this._reciever.inputDelete(e);
       e.outputDelete(this._reciever);
-    } else {
+    } else if (e.outputSet.size) {
       console.warn('No reciever for unlink', e)
     }
   }
 
   private _emitterUnlink() {
+    if (!this._emitterUnlinkSet.size || this.job === EEngineJob.Unlink) return;
+    const jobPrev = this.job;
     this.job = EEngineJob.Unlink;
     for (const emitter of this._emitterUnlinkSet) {
       emitter.poll();
     }
     this._emitterUnlinkSet.clear();
-    this.job = undefined;
+    this.job = jobPrev;
   }
-
-  
 
   private _recieverUpdate() {
     this.job = EEngineJob.Link;

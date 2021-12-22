@@ -1,5 +1,5 @@
 import { engine } from './Engine';
-import { IEmitter, ILambda, IReciever, IRecieverProps } from './types';
+import { EEngineJob, IEmitter, ILambda, IReciever, IRecieverProps } from './types';
 import { EMPTY_OBJECT } from '../util/util';
 
 export class Reciever<V = any> implements IReciever<V> {
@@ -20,7 +20,7 @@ export class Reciever<V = any> implements IReciever<V> {
 
   public pull(): V {
     const v = engine.walk(this, () => this._pull.call(this.context));
-    if (this._props.onChange) this._props.onChange(v);
+    if (this._props.onChange && engine.job === EEngineJob.Link) this._props.onChange(v);
     return v;
   }
 
