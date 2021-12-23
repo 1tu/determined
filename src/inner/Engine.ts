@@ -13,20 +13,6 @@ class Engine {
     else if (this.job === EEngineJob.Unlink) this._unlink(e);
   }
 
-  public emitterChange(e: IEmitter, dirty?: boolean) {
-    if (!e.outputSet.size) return;
-    this.transaction(() => {
-      for (const output of e.outputSet) output.onInputChange(dirty);
-    });
-  }
-
-  public transaction(fn: ILambda) {
-    this.updateDepth++;
-    fn();
-    this.updateDepth--;
-    if (!this.updateDepth) this._recieverUpdate();
-  }
-
   public emitter2Unlink(e: IEmitter) {
     this._emitterUnlinkSet.add(e);
   }
@@ -36,21 +22,29 @@ class Engine {
     if (!this.updateDepth) this._recieverUpdate();
   }
 
+  public transaction(fn: ILambda) {
+    this.updateDepth++;
+    fn();
+    this.updateDepth--;
+    if (!this.updateDepth) this._recieverUpdate();
+  }
+
+  // обход графа
   public walk<CB extends ILambda>(r: IReciever, stepInto: CB): ReturnType<CB> {
     // ПОГРУЖАЕМСЯ по графу
     const recieverPrev = this._reciever;
     this._reciever = r;
-    r.dive();
+    r.walkBefore();
     try {
       return stepInto();
     } finally {
       // ВСПЛЫВАЕМ обратно
-      r.lift();
+      r.walkAfter();
       this._reciever = recieverPrev;
       if (!this._reciever) {
         // поидее в этот момент обход закончился и можно запускать Unlink
         // TODO: nextTick?
-        this._emitterUnlink();
+        setTimeout(() => this._emitterUnlink());
       }
     }
   }
@@ -84,6 +78,7 @@ class Engine {
   }
 
   private _recieverUpdate() {
+    if (this.job === EEngineJob.Unlink) console.error('Why unlink while LINK?!');
     this.job = EEngineJob.Link;
     for (const reciever of this._recieverUpdateSet) {
       reciever.pull();

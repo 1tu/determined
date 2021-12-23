@@ -22,13 +22,13 @@
     const c5 = new Computed(() => c2.get() * c4.get(), { name: 'с5', onChange: (v) => console.log('c5', v) });
 
     const obs = new Observer(() => c3.get() + c5.get(), (v) => console.log('computed changed!', v));
-    // transaction(() => {
-    v3.set(true);
+    transaction(() => {
+      v3.set(true);
+      v4.set(true);
+      v3.set(false);
+      v4.set(false);
+    });
     // v4.set(true);
-    // });
-    v3.set(false);
-    v4.set(true);
-    v4.set(false);
   </script>
 </head>
 

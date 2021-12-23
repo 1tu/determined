@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { EEngineJob, EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, NOT_CHANGED } from "./types";
+import { EEngineJob, EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, NEXT_EMPTY, NOT_CHANGED } from "./types";
 import { isFunction } from "../util/util";
 import { Emitter } from './Emitter';
 import { engine } from './Engine';
@@ -7,6 +7,7 @@ import { engine } from './Engine';
 export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V> {
   private _get?: ILambda<V>;
   private _comparer: IComparer;
+  private _valueNext?: V | typeof NEXT_EMPTY = NEXT_EMPTY;
   private _value?: V;
   private _valuePrev?: V;
 
@@ -33,6 +34,10 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
     return this._value;
   }
 
+  public getPrev() {
+    return this._valuePrev;
+  }
+
   public override poll(skip?: boolean) {
     super.poll(skip);
     // если выполняем задачу по разлинковке, нам нужно в любом случае проходить до самого корня
@@ -41,7 +46,7 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
       if (this._get) this._get();
     } else if (this.state !== EValueState.Actual) {
       try {
-        return this._next(this._get());
+        return this._set(this._get());
       } catch (e) {
         if (e !== NOT_CHANGED) {
           this.error = e;
@@ -62,7 +67,7 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
       this._get = lv;
       this.state = EValueState.Dirty;
     } else {
-      isChanged = this._next(lv);
+      isChanged = this._set(lv);
       this.state = EValueState.Actual;
     }
 
@@ -79,13 +84,19 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
     }
   }
 
-  private _next(v: V) {
+  private _set(v?: V) {
     this.error = undefined;
     const isChanged = !this._comparer(v, this._value);
     if (isChanged) {
       this._valuePrev = this._value;
       this._value = v;
     }
+    return isChanged;
+  }
+
+  private _next(v?: V) {
+    const isChanged = !this._comparer(v, this._valueNext !== NEXT_EMPTY ? this._valueNext : this._value);
+    this._valueNext = isChanged ? v : NEXT_EMPTY;
     return isChanged;
   }
 }

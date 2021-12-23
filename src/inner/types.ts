@@ -3,29 +3,25 @@ export type ILambdaValue<V = any> = V | ILambda<V>;
 export type IComparer<V = any> = (v1: V, prev: V) => boolean;
 
 export const NOT_CHANGED = Symbol('VALUE NOT CHANGED');
+export const NEXT_EMPTY = Symbol('VALUE NEXT EMPTY');
 
 // REVIEVER (data layer)
 export interface IReciever<V = any> {
   readonly context: object;
-  inputSet: Set<IEmitter>;
+  readonly inputSet: Set<IEmitter>;
   onInputChange(dirty?: boolean): void;
   // получить новое значение
   pull(): V;
   // ПОГРУЖАЕМСЯ по графу
-  dive(): void;
+  walkBefore(): void;
   // ВСПЛЫВАЕМ
-  lift(): void;
+  walkAfter(): void;
   inputAdd(e: IEmitter): void;
-  inputDelete(e: IEmitter): void;
-}
-
-export interface IRecieverValue<V = any> extends IReciever {
-  readonly value: IValue<V>;
-  get(): V;
 }
 
 export interface IRecieverProps<V> {
   context?: object;
+  onInputChange?(dirty?: boolean): void;
   onChange?(v: V): void;
 }
 
@@ -39,6 +35,7 @@ export enum EValueState {
 export interface IValue<V = any> extends IEmitter<IValueProps<V>> {
   state: EValueState;
   get(): V;
+  getPrev(): V;
   set(lv: ILambdaValue<V>): boolean;
 }
 
@@ -50,7 +47,7 @@ export interface IValueProps<V> extends IEmitterProps {
 export interface IEmitter<P extends IEmitterProps = IEmitterProps> {
   readonly props: P;
   readonly outputSet: Set<IReciever>;
-  // return isChanged
+  //  return isChanged
   poll(skipEngine?: boolean): boolean;
   changed(dirty?: boolean): void;
   outputAdd(r: IReciever): void;

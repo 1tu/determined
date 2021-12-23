@@ -14,7 +14,10 @@ export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
   }
 
   public changed(dirty?: boolean) {
-    engine.emitterChange(this, dirty);
+    if (!this.outputSet.size) return;
+    engine.transaction(() => {
+      for (const output of this.outputSet) output.onInputChange(dirty);
+    });
   }
 
   public outputAdd(r: IReciever) {
@@ -23,6 +26,7 @@ export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
 
   public outputDelete(r: IReciever) {
     this.outputSet.delete(r);
+    // TODO: что если позже добавится output?
     if (!this.outputSet.size && engine.job === EEngineJob.Link) engine.emitter2Unlink(this);
   }
 }
