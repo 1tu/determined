@@ -15,8 +15,14 @@ class Engine {
 
   public emitterChange(e: IEmitter, dirty?: boolean) {
     if (!e.outputSet.size) return;
+    this.transaction(() => {
+      for (const output of e.outputSet) output.onInputChange(dirty);
+    });
+  }
+
+  public transaction(fn: ILambda) {
     this.updateDepth++;
-    for (const output of e.outputSet) output.onInputChange(dirty);
+    fn();
     this.updateDepth--;
     if (!this.updateDepth) this._recieverUpdate();
   }

@@ -1,7 +1,6 @@
-import { EEngineJob, EValueState, ILambda, IRecieverProps, IRecieverValue, IValue, NOT_CHANGED } from './types';
+import { EValueState, ILambda, IRecieverProps, IRecieverValue, IValue, NOT_CHANGED } from './types';
 import { EMPTY_OBJECT } from '../util/util';
 import { Reciever } from './Reciever';
-import { engine } from './Engine';
 
 export class RecieverValue<V> extends Reciever<V> implements IRecieverValue<V> {
   private _pulling = false;

@@ -8,7 +8,7 @@
   <title>Тест</title>
   <script src="./dist/index.js"></script>
   <script>
-    const { Observer, Observable, Computed } = determined;
+    const { Observer, Observable, Computed, transaction } = determined;
     const v1 = new Observable(5, { name: 'v1' });
     const v2 = new Observable(10, { name: 'v2' });
     const v3 = new Observable(false, { name: 'v3' });
@@ -17,16 +17,18 @@
     const c0 = new Computed(() => v2.get() + 2, { name: 'с0' });
     const c1 = new Computed(() => c0.get() * 4, { name: 'с1', onChange: (v) => console.log('zzz', v) });
     const c2 = new Computed(() => v3.get() ? c1.get() : 0, { name: 'с2' });
-    const c3 = new Computed(() => v1.get() + c2.get(), { name: 'с3' });
+    const c3 = new Computed(() => v1.get() + c2.get(), { name: 'с3', onChange: (v) => console.log('c3', v) });
     const c4 = new Computed(() => v4.get() ? c1.get() : 2, { name: 'с4' });
-    const c5 = new Computed(() => c2.get() * c4.get(), { name: 'с5' });
+    const c5 = new Computed(() => c2.get() * c4.get(), { name: 'с5', onChange: (v) => console.log('c5', v) });
 
     const obs = new Observer(() => c3.get() + c5.get(), (v) => console.log('computed changed!', v));
+    // transaction(() => {
     v3.set(true);
+    // v4.set(true);
+    // });
     v3.set(false);
-    console.log(c1._reciever.inputSet);
-    // v3.set(true);
-    // console.log(c1._reciever.inputSet);
+    v4.set(true);
+    v4.set(false);
   </script>
 </head>
 

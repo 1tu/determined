@@ -1,3 +1,4 @@
-export { Observable } from './api/Observable';
-export { Computed } from './api/Computed';
-export { Observer } from './api/Observer';
+export * from './api/Observable';
+export * from './api/Computed';
+export * from './api/Observer';
+export * from './api/util';
