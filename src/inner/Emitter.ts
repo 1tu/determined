@@ -13,10 +13,10 @@ export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
     return false;
   }
 
-  public changed(dirty?: boolean) {
+  public changed() {
     if (!this.outputSet.size) return;
     engine.transaction(() => {
-      for (const output of this.outputSet) output.onInputChange(dirty);
+      for (const output of this.outputSet) output.onInputChange();
     });
   }
 

@@ -1,4 +1,4 @@
-import { EEngineJob, IEmitter, ILambda, IReciever } from './types';
+import { EEngineJob, IEmitter, ILambda, IReciever, VALUE_NOT_CHANGED } from './types';
 
 class Engine {
   public job?: EEngineJob;
@@ -43,8 +43,8 @@ class Engine {
       this._reciever = recieverPrev;
       if (!this._reciever) {
         // поидее в этот момент обход закончился и можно запускать Unlink
-        // TODO: nextTick?
-        setTimeout(() => this._emitterUnlink());
+        // TODO: nextTick? setTimeout тут даёт баги
+        this._emitterUnlink();
       }
     }
   }
@@ -81,7 +81,11 @@ class Engine {
     if (this.job === EEngineJob.Unlink) console.error('Why unlink while LINK?!');
     this.job = EEngineJob.Link;
     for (const reciever of this._recieverUpdateSet) {
-      reciever.pull();
+      try {
+        reciever.pull();        
+      } catch (e) {
+        if (e !== VALUE_NOT_CHANGED) throw e;
+      }
     }
     this._recieverUpdateSet.clear();
     this.job = undefined;

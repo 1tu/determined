@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { EEngineJob, EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, NEXT_EMPTY, NOT_CHANGED } from "./types";
+import { EEngineJob, EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, VALUE_NEXT_EMPTY, VALUE_NOT_CHANGED } from "./types";
 import { isFunction } from "../util/util";
 import { Emitter } from './Emitter';
 import { engine } from './Engine';
@@ -7,7 +7,7 @@ import { engine } from './Engine';
 export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V> {
   private _get?: ILambda<V>;
   private _comparer: IComparer;
-  private _valueNext?: V | typeof NEXT_EMPTY = NEXT_EMPTY;
+  private _valueNext?: V | typeof VALUE_NEXT_EMPTY = VALUE_NEXT_EMPTY;
   private _value?: V;
   private _valuePrev?: V;
 
@@ -16,12 +16,11 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
   public set state(v: EValueState) {
     if (this._state === v) return;
     this._state = v;
-    if (v !== EValueState.Actual) this.changed(false);
+    if (v !== EValueState.Actual) this.changed();
   }
 
   public error?: Error;
 
-  // reciever set LV || or
   constructor(lv?: ILambdaValue<V>, props?: IValueProps<V>) {
     super(props);
     this._comparer = this.props.comparer || config.comparer;
@@ -46,9 +45,9 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
       if (this._get) this._get();
     } else if (this.state !== EValueState.Actual) {
       try {
-        return this._set(this._get());
+        return this._set(this._get ? this._get() : this._valueNext as V);
       } catch (e) {
-        if (e !== NOT_CHANGED) {
+        if (e !== VALUE_NOT_CHANGED) {
           this.error = e;
           throw e;
         }
@@ -65,13 +64,13 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
 
     if (isFunction(lv)) {
       this._get = lv;
-      this.state = EValueState.Dirty;
+      this._state = EValueState.Dirty;
     } else {
-      isChanged = this._set(lv);
-      this.state = EValueState.Actual;
+      isChanged = this._next(lv);
+      this._state = isChanged ? EValueState.Dirty : EValueState.Actual;
     }
 
-    if (isChanged) this.changed(true);
+    if (isChanged) this.changed();
     return isChanged;
   }
 
@@ -86,6 +85,8 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
 
   private _set(v?: V) {
     this.error = undefined;
+    this._valueNext = VALUE_NEXT_EMPTY;
+
     const isChanged = !this._comparer(v, this._value);
     if (isChanged) {
       this._valuePrev = this._value;
@@ -95,8 +96,8 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
   }
 
   private _next(v?: V) {
-    const isChanged = !this._comparer(v, this._valueNext !== NEXT_EMPTY ? this._valueNext : this._value);
-    this._valueNext = isChanged ? v : NEXT_EMPTY;
+    const isChanged = this._valueNext === VALUE_NEXT_EMPTY ? !this._comparer(v, this._value) : true;
+    this._valueNext = v;
     return isChanged;
   }
 }

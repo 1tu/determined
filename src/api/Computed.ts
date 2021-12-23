@@ -1,7 +1,8 @@
-import { EValueState, ILambda, ILambdaValue, IReciever, IRecieverProps, IValue, IValueProps, NOT_CHANGED } from '../inner/types';
+import { EEngineJob, EValueState, ILambda, ILambdaValue, IReciever, IRecieverProps, IValue, IValueProps, VALUE_NOT_CHANGED } from '../inner/types';
 import { EMPTY_OBJECT } from '../util/util';
 import { Value } from '../inner/Value';
 import { Reciever } from '../inner/Reciever';
+import { engine } from '../inner/Engine';
 
 interface IComputedProps<V> extends Omit<IRecieverProps<V>, 'onInputChange'>, IValueProps<V> {
 }
@@ -23,23 +24,17 @@ export class Computed<V> {
     return this._value.getPrev();
   }
 
-
   public set(lv: ILambdaValue<V>) {
     return this._value.set(lv);
   }
 
   private _get(): V {
-    if (this._value.state === EValueState.Dirty) return this._reciever.pull();
-    else if (this._value.state === EValueState.Check) {
-      for (let input of this._reciever.inputSet) {
-        if (input.poll(true)) return this._reciever.pull();
-      }
-      throw NOT_CHANGED;
-    }
-    else throw NOT_CHANGED;
+    if (this._value.state !== EValueState.Actual || engine.job === EEngineJob.Unlink)
+      return this._reciever.pull();
+    throw VALUE_NOT_CHANGED;
   }
 
-  private _onInputChange(dirty?: boolean) {
-    this._value.state = dirty ? EValueState.Dirty : EValueState.Check;
+  private _onInputChange() {
+    this._value.state = EValueState.Dirty;
   }
 }
