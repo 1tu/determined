@@ -6,7 +6,7 @@ export class Observer<V> {
   private _reciever: IReciever<V>;
 
   constructor(pull: ILambda<V>, private _effect: ILambda<void, V>) {
-    this._reciever = new Reciever(pull, { onChange: this._effect, onInputChange: this._onInputChange.bind(this) });
+    this._reciever = new Reciever(pull, { onPull: this._effect, onInputChange: this._onInputChange.bind(this) });
     this._onInputChange();
   }
 

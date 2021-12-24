@@ -24,10 +24,6 @@ export class Computed<V> {
     return this._value.getPrev();
   }
 
-  public set(lv: ILambdaValue<V>) {
-    return this._value.set(lv);
-  }
-
   private _get(): V {
     if (this._value.state !== EValueState.Actual || engine.job === EEngineJob.Unlink)
       return this._reciever.pull();

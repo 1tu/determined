@@ -22,7 +22,7 @@ export interface IReciever<V = any> {
 export interface IRecieverProps<V> {
   context?: object;
   onInputChange?(): void;
-  onChange?(v: V): void;
+  onPull?(v: V): void;
 }
 
 // VALUE (domain layer)
@@ -41,6 +41,7 @@ export interface IValue<V = any> extends IEmitter<IValueProps<V>> {
 
 export interface IValueProps<V> extends IEmitterProps {
   comparer?: IComparer<V>;
+  onChange?(v: V): void;
 }
 
 // EMITTER (view layer)

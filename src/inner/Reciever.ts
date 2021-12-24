@@ -44,7 +44,7 @@ export class Reciever<V = any> implements IReciever<V> {
 
   private _pull(): V {
     const v = engine.walk(this, () => this._pullFn.call(this.context));
-    if (this._props.onChange && engine.job !== EEngineJob.Unlink) this._props.onChange(v);
+    if (this._props.onPull && engine.job !== EEngineJob.Unlink) this._props.onPull(v);
     return v;
   }
 }

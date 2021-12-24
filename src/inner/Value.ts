@@ -91,6 +91,7 @@ export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V>
     if (isChanged) {
       this._valuePrev = this._value;
       this._value = v;
+      if (this.props.onChange) this.props.onChange(this._value);
     }
     return isChanged;
   }

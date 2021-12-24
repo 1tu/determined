@@ -78,11 +78,12 @@ describe('Граф. Изменение', () => {
     v4.set(true);
     v4.set(false);
 
-    expect(listenerC1.callCount).to.be.eq(1);
+    // 2 раза потому что c1 перестаёт наблюдаться и чистится при v3.set(false)
+    expect(listenerC1.callCount).to.be.eq(2);
     expect(listenerC3.callCount).to.be.eq(3);
     expect(listenerC5.callCount).to.be.eq(1);
-    expect(listenerC5.args[1][0]).not.to.be.NaN;
-    expect(listenerObs.callCount).to.be.eq(5);
+    expect((listenerC5.args.find(a => a.includes(NaN)) || [])[0]).not.to.be.NaN;
+    expect(listenerObs.callCount).to.be.eq(3);
   });
 
   it('computed повторно не запускает onChange с неизмененным значением, хоть и его зависимость изменилась', () => {
