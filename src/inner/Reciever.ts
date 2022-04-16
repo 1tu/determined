@@ -1,19 +1,22 @@
 import { engine } from './Engine';
-import { EEngineJob, IEmitter, IEmitterBase, ILambda, IReciever, IRecieverProps, VALUE_NOT_CHANGED } from './types';
+import { EEmitterState, IEmitter, ILambda, IReciever, IRecieverProps, IValueBase, VALUE_NOT_CHANGED } from './types';
 
 export class Reciever<V = any> implements IReciever<V> {
   public downList = new Set<IEmitter>();
   private _downPrevList?: Set<IEmitter>;
 
-  constructor(private _lambda: ILambda<V>, private _emitter: IEmitterBase, private _props?: IRecieverProps<V>) {
+  public get isObserving() {
+    return !!this.downList.size;
   }
 
+  constructor(protected _lambda: ILambda<V>, private _props: IRecieverProps<V>) { }
+
   public onDownChanged() {
-    this._emitter.downChanged();
+    this._props.onDownChange()
   }
 
   public get(): V {
-    if (!this.downList.size || engine.job === EEngineJob.Unlink) return this._get();
+    if (!this.isObserving) return this._get();
     for (let down of this.downList) {
       if (down.actualize(true)) return this._get();
     }
@@ -38,9 +41,14 @@ export class Reciever<V = any> implements IReciever<V> {
     this.downList.add(e);
   }
 
+  public dispose() {
+    for (let down of this.downList) down.upDelete(this);
+    this.downList.clear();
+  }
+
   private _get(): V {
     const v = engine.walk(this, this._lambda);
-    if (this._props && this._props.onGet && engine.job !== EEngineJob.Unlink) this._props.onGet(v);
+    if (this._props.onGet) this._props.onGet(v);
     return v;
   }
 }

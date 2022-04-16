@@ -52,10 +52,10 @@
         layer = ((prev) => {
           const index = layerCount - i;
           let next = {
-            prop1: new Computed(() => prev.prop2.get()),
-            prop2: new Computed(() => prev.prop1.get() - prev.prop3.get()),
-            prop3: new Computed(() => prev.prop2.get() + prev.prop4.get()),
-            prop4: new Computed(() => prev.prop3.get())
+            prop1: new Computed(() => prev.prop2.get(), { name: `${index} p1` /*, onChange: v => console.log(`${index} p1 = ${v}`) */ }),
+            prop2: new Computed(() => prev.prop1.get() - prev.prop3.get(), { name: `${index} p2` /*, onChange: v => console.log(`${index} p2 = ${v}`) */ }),
+            prop3: new Computed(() => prev.prop2.get() + prev.prop4.get(), { name: `${index} p3` /*, onChange: v => console.log(`${index} p3 = ${v}`) */ }),
+            prop4: new Computed(() => prev.prop3.get(), { name: `${index} p4` /*, onChange: v => console.log(`${index} p4 = ${v}`) */ })
           };
 
           if (heat) {

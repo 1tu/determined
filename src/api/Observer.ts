@@ -1,22 +1,20 @@
 import { engine } from '../inner/Engine';
 import { Reciever } from '../inner/Reciever';
-import { IEmitterBase, ILambda, IReciever } from '../inner/types';
+import { ILambda, IReciever } from '../inner/types';
 
-export class Observer<V> implements IEmitterBase {
+export class Observer<V> {
   private _reciever: IReciever<V>;
 
   constructor(pull: ILambda<V>, private _effect: ILambda<void, V>) {
-    this._reciever = new Reciever(pull, this, { onGet: this._effect });
-    this.downChanged();
+    this._reciever = new Reciever(pull, { onGet: this._effect, onDownChange: this._onDownChange.bind(this) });
+    this._onDownChange();
   }
 
   public dispose() {
-    for (let down of this._reciever.downList) {
-      down.upDelete(this._reciever);
-    }
+    this._reciever.dispose();
   }
 
-  public downChanged() {
+  private _onDownChange() {
     engine.reciever2Update(this._reciever);
   }
 }

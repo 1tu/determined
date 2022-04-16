@@ -81,7 +81,7 @@ describe('Граф. Изменение', () => {
     // 2 раза потому что c1 перестаёт наблюдаться и чистится при v3.set(false)
     expect(listenerC1.callCount).to.be.eq(2);
     expect(listenerC3.callCount).to.be.eq(3);
-    expect(listenerC5.callCount).to.be.eq(1);
+    expect(listenerC5.callCount).to.be.eq(3);
     expect((listenerC5.args.find(a => a.includes(NaN)) || [])[0]).not.to.be.NaN;
     expect(listenerObs.callCount).to.be.eq(3);
   });

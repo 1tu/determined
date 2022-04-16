@@ -1,24 +1,23 @@
-import { EEngineJob, IEmitter, ILambda, IReciever, VALUE_NOT_CHANGED } from './types';
+import { IEmitter, ILambda, IReciever } from './types';
 
 class Engine {
-  public job?: EEngineJob;
   public updateDepth = 0;
 
   private _reciever?: IReciever;
   private _noHandle = false;
-  private _emitterUnlinkList = new Set<IEmitter>();
   private _recieverUpdateList = new Set<IReciever>();
 
-  public emitterHandle(e: IEmitter) {
+  public link(e: IEmitter) {
     if (this._noHandle) return;
-    if (this.job === EEngineJob.Link) this._link(e);
-    else if (this.job === EEngineJob.Unlink) this._unlink(e);
+    if (this._reciever) {
+      this._reciever.downAdd(e);
+      e.upAdd(this._reciever);
+    } else {
+      console.warn('Read value out of reaction', e.props ? e.props.name : undefined)
+    }
   }
 
-  public emitter2Unlink(e: IEmitter) {
-    this._emitterUnlinkList.add(e);
-  }
-
+  // почему просто не вызвать .get()?
   public reciever2Update(r: IReciever) {
     this._recieverUpdateList.add(r);
     if (!this.updateDepth) this._recieverUpdate();
@@ -50,54 +49,12 @@ class Engine {
       // ВСПЛЫВАЕМ обратно
       r.walkUp();
       this._reciever = recieverPrev;
-      if (!this._reciever) {
-        // поидее в этот момент обход закончился и можно запускать Unlink
-        // TODO: nextTick? setTimeout тут даёт баги
-        this._emitterUnlink();
-      }
     }
-  }
-
-  private _link(e: IEmitter) {
-    if (this._reciever) {
-      this._reciever.downAdd(e);
-      e.upAdd(this._reciever);
-    } else {
-      console.warn('No reciever for link', e)
-    }
-  }
-
-  private _unlink(e: IEmitter) {
-    if (this._reciever) {
-      e.upDelete(this._reciever);
-    } else if (e.upList.size) {
-      console.warn('No reciever for unlink', e)
-    }
-  }
-
-  private _emitterUnlink() {
-    if (!this._emitterUnlinkList.size || this.job === EEngineJob.Unlink) return;
-    const jobPrev = this.job;
-    this.job = EEngineJob.Unlink;
-    for (const emitter of this._emitterUnlinkList) {
-      emitter.actualize();
-    }
-    this._emitterUnlinkList.clear();
-    this.job = jobPrev;
   }
 
   private _recieverUpdate() {
-    if (this.job === EEngineJob.Unlink) console.error('Why unlink while LINK?!');
-    this.job = EEngineJob.Link;
-    for (const reciever of this._recieverUpdateList) {
-      try {
-        reciever.get();        
-      } catch (e) {
-        if (e !== VALUE_NOT_CHANGED) throw e;
-      }
-    }
+    for (const reciever of this._recieverUpdateList) reciever.get();
     this._recieverUpdateList.clear();
-    this.job = undefined;
   }
 }
 

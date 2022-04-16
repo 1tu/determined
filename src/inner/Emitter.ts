@@ -1,18 +1,21 @@
 import { engine } from './Engine';
-import { EEngineJob, IRecieverBase, IEmitter, IEmitterProps, EEmitterState } from "./types";
-import { EMPTY_OBJECT } from '../util/util';
+import { IRecieverBase, IEmitter, IEmitterProps, EEmitterState } from "./types";
 
 export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
-  public state = EEmitterState.Actual;
+  public state = EEmitterState.Dirty;
 
   // КТО зависит ОТ НАС
   public upList = new Set<IRecieverBase>();
 
-  public get isObserving() {
+  public get isObserved() {
     return !!this.upList.size;
   }
 
-  constructor(public props: P = EMPTY_OBJECT as P) { }
+  public get isActual() {
+    return this.state === EEmitterState.Actual;
+  }
+
+  constructor(public props?: P) { }
 
   public actualize(skipLink?: boolean) {
     this._link(skipLink);
@@ -21,10 +24,11 @@ export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
 
   public changed() {
     this.state = EEmitterState.Dirty;
-    if (!this.upList.size) return;
-    engine.transaction(() => {
-      for (const up of this.upList) up.onDownChanged();
-    });
+    if (this.isObserved) {
+      engine.transaction(() => {
+        for (const up of this.upList) up.onDownChanged();
+      });
+    }
   }
 
   public downChanged() {
@@ -37,16 +41,14 @@ export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
 
   public upDelete(r: IRecieverBase) {
     this.upList.delete(r);
-    // TODO: что если позже добавится up?
-    if (!this.isObserving) this._onUnobserved();
+    if (!this.isObserved) this._onUnobserved();
   }
 
   protected _onUnobserved() {
     this.state = EEmitterState.Dirty;
-    if (engine.job === EEngineJob.Link) engine.emitter2Unlink(this);
   }
 
   protected _link(skipLink?: boolean) {
-    if (!skipLink) engine.emitterHandle(this);
+    if (!skipLink) engine.link(this);
   }
 }

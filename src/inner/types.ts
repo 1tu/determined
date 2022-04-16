@@ -15,17 +15,15 @@ export interface IEmitterProps {
   name?: string;
 }
 
-export interface IEmitterBase {
-  downChanged(): void;
-}
-
-export interface IEmitter<P extends IEmitterProps = IEmitterProps> extends IEmitterBase {
+export interface IEmitter<P extends IEmitterProps = IEmitterProps> {
   state: EEmitterState;
+  readonly isActual: boolean;
   readonly upList: Set<IRecieverBase>;
-  readonly isObserving: boolean;
-  readonly props: P;
+  readonly isObserved: boolean;
+  readonly props?: P;
   // return isChanged
   actualize(skipLink?: boolean): boolean;
+  downChanged(): void;
   changed(): void;
   upAdd(r: IRecieverBase): void;
   upDelete(r: IRecieverBase): void;
@@ -38,9 +36,9 @@ export interface IValueBaseProps<V> extends IEmitterProps {
 }
 
 export interface IValueBase<V = any, P extends IValueBaseProps<V> = IValueBaseProps<V>> extends IEmitter<P> {
-  readonly cache_: V;
+  readonly value: V;
   get(): V;
-  set(lv: ILambdaValue<V>): void;
+  set(v?: V): void;
 }
 
 export interface IValueProps<V> extends IValueBaseProps<V> {
@@ -48,32 +46,26 @@ export interface IValueProps<V> extends IValueBaseProps<V> {
 
 export interface IValue<V = any> extends IValueBase<V, IValueProps<V>> {
   readonly error?: Error;
-  getPrev(): V;
-  set(lv: ILambda<V>): void;
 }
 
 // REVIEVER (data layer)
 export interface IRecieverProps<V> {
-  onDownChange?(): void;
+  onDownChange(): void;
   onGet?(v: V): void;
 }
 
 export interface IRecieverBase {
   onDownChanged(): void;
+  dispose(): void;
 }
 
 export interface IReciever<V = any> extends IRecieverBase {
   readonly downList: Set<IEmitter>;
-  // получить новое значение, может выбросить VALUE_NOT_CHANGED
+  readonly isObserving: boolean;
   get(): V;
   // ПОГРУЖАЕМСЯ по графу
   walkDown(): void;
   // ВСПЛЫВАЕМ
   walkUp(): void;
   downAdd(e: IEmitter): void;
-}
-
-export enum EEngineJob {
-  Unlink,
-  Link,
 }
