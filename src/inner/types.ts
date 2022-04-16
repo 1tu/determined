@@ -3,56 +3,11 @@ export type ILambdaValue<V = any> = V | ILambda<V>;
 export type IComparer<V = any> = (v1: V, prev: V) => boolean;
 
 export const VALUE_NOT_CHANGED = Symbol('VALUE NOT CHANGED');
-export const VALUE_NEXT_EMPTY = Symbol('VALUE NEXT EMPTY');
-
-// REVIEVER (data layer)
-export interface IReciever<V = any> {
-  readonly context: object;
-  readonly inputSet: Set<IEmitter>;
-  onInputChange(): void;
-  // получить новое значение, может выбросить VALUE_NOT_CHANGED
-  pull(): V;
-  // ПОГРУЖАЕМСЯ по графу
-  walkBefore(): void;
-  // ВСПЛЫВАЕМ
-  walkAfter(): void;
-  inputAdd(e: IEmitter): void;
-}
-
-export interface IRecieverProps<V> {
-  context?: object;
-  onInputChange?(): void;
-  onPull?(v: V): void;
-}
-
-// VALUE (domain layer)
-export enum EValueState {
-  Actual,
-  Dirty,
-}
-
-export interface IValue<V = any> extends IEmitter<IValueProps<V>> {
-  state: EValueState;
-  // тут нельзя выбрасывать VALUE_NOT_CHANGED!
-  get(): V;
-  getPrev(): V;
-  set(lv: ILambdaValue<V>): boolean;
-}
-
-export interface IValueProps<V> extends IEmitterProps {
-  comparer?: IComparer<V>;
-  onChange?(v: V): void;
-}
 
 // EMITTER (view layer)
-export interface IEmitter<P extends IEmitterProps = IEmitterProps> {
-  readonly props: P;
-  readonly outputSet: Set<IReciever>;
-  //  return isChanged
-  poll(skipEngine?: boolean): boolean;
-  changed(): void;
-  outputAdd(r: IReciever): void;
-  outputDelete(r: IReciever): void;
+export enum EEmitterState {
+  Actual,
+  Dirty,
 }
 
 export interface IEmitterProps {
@@ -60,7 +15,65 @@ export interface IEmitterProps {
   name?: string;
 }
 
+export interface IEmitterBase {
+  downChanged(): void;
+}
+
+export interface IEmitter<P extends IEmitterProps = IEmitterProps> extends IEmitterBase {
+  state: EEmitterState;
+  readonly upList: Set<IRecieverBase>;
+  readonly isObserving: boolean;
+  readonly props: P;
+  // return isChanged
+  actualize(skipLink?: boolean): boolean;
+  changed(): void;
+  upAdd(r: IRecieverBase): void;
+  upDelete(r: IRecieverBase): void;
+}
+
+// VALUE (domain layer)
+export interface IValueBaseProps<V> extends IEmitterProps {
+  onChange?(v: V): void;
+  comparer?: IComparer<V>;
+}
+
+export interface IValueBase<V = any, P extends IValueBaseProps<V> = IValueBaseProps<V>> extends IEmitter<P> {
+  readonly cache_: V;
+  get(): V;
+  set(lv: ILambdaValue<V>): void;
+}
+
+export interface IValueProps<V> extends IValueBaseProps<V> {
+}
+
+export interface IValue<V = any> extends IValueBase<V, IValueProps<V>> {
+  readonly error?: Error;
+  getPrev(): V;
+  set(lv: ILambda<V>): void;
+}
+
+// REVIEVER (data layer)
+export interface IRecieverProps<V> {
+  onDownChange?(): void;
+  onGet?(v: V): void;
+}
+
+export interface IRecieverBase {
+  onDownChanged(): void;
+}
+
+export interface IReciever<V = any> extends IRecieverBase {
+  readonly downList: Set<IEmitter>;
+  // получить новое значение, может выбросить VALUE_NOT_CHANGED
+  get(): V;
+  // ПОГРУЖАЕМСЯ по графу
+  walkDown(): void;
+  // ВСПЛЫВАЕМ
+  walkUp(): void;
+  downAdd(e: IEmitter): void;
+}
+
 export enum EEngineJob {
-  Link,
   Unlink,
+  Link,
 }

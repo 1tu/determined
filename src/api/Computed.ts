@@ -1,5 +1,4 @@
-import { EEngineJob, EValueState, ILambda, ILambdaValue, IReciever, IRecieverProps, IValue, IValueProps, VALUE_NOT_CHANGED } from '../inner/types';
-import { EMPTY_OBJECT } from '../util/util';
+import { EEngineJob, EEmitterState, ILambda, IReciever, IRecieverProps, IValue, IValueProps, VALUE_NOT_CHANGED } from '../inner/types';
 import { Value } from '../inner/Value';
 import { Reciever } from '../inner/Reciever';
 import { engine } from '../inner/Engine';
@@ -11,11 +10,6 @@ export class Computed<V> {
   private _value: IValue<V>;
   private _reciever: IReciever;
 
-  constructor(calc: ILambda<V>, props: IComputedProps<V> = EMPTY_OBJECT) {
-    this._value = new Value(() => this._get(), props);
-    this._reciever = new Reciever(calc, { ...props, onInputChange: this._onInputChange.bind(this) });
-  }
-
   public get() {
     return this._value.get();
   }
@@ -24,13 +18,20 @@ export class Computed<V> {
     return this._value.getPrev();
   }
 
-  private _get(): V {
-    if (this._value.state !== EValueState.Actual || engine.job === EEngineJob.Unlink)
-      return this._reciever.pull();
-    throw VALUE_NOT_CHANGED;
+  constructor(lambda: ILambda<V>, props?: IComputedProps<V>) {
+    this._value = new Value(() => this._get(), props);
+    this._reciever = new Reciever(lambda, this._value, props);
   }
 
-  private _onInputChange() {
-    this._value.state = EValueState.Dirty;
+  private _get(): V {
+    if (this._value.state !== EEmitterState.Actual || engine.job === EEngineJob.Unlink) {
+      try {
+        return this._reciever.get();
+      } catch (e) {
+        if (e !== VALUE_NOT_CHANGED) throw e;
+        return this._value.cache_;
+      }
+    }
+    return this._value.cache_;
   }
 }

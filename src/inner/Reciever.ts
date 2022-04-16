@@ -1,50 +1,46 @@
 import { engine } from './Engine';
-import { EEngineJob, IEmitter, ILambda, IReciever, IRecieverProps, VALUE_NOT_CHANGED } from './types';
-import { EMPTY_OBJECT } from '../util/util';
+import { EEngineJob, IEmitter, IEmitterBase, ILambda, IReciever, IRecieverProps, VALUE_NOT_CHANGED } from './types';
 
 export class Reciever<V = any> implements IReciever<V> {
-  public context: object;
-  public inputSet: Set<IEmitter> = new Set();
+  public downList = new Set<IEmitter>();
+  private _downPrevList?: Set<IEmitter>;
 
-  private _inputPrevSet?: Set<IEmitter>;
-
-  constructor(private _pullFn: ILambda<V>, private _props: IRecieverProps<V> = EMPTY_OBJECT) {
-    this.context = this._props.context || this;
+  constructor(private _lambda: ILambda<V>, private _emitter: IEmitterBase, private _props?: IRecieverProps<V>) {
   }
 
-  public onInputChange() {
-    if (this._props.onInputChange) this._props.onInputChange();
+  public onDownChanged() {
+    this._emitter.downChanged();
   }
 
-  public pull(): V {
-    if (!this.inputSet.size || engine.job === EEngineJob.Unlink) return this._pull();
-    for (let input of this.inputSet) {
-      if (input.poll(true)) return this._pull();
+  public get(): V {
+    if (!this.downList.size || engine.job === EEngineJob.Unlink) return this._get();
+    for (let down of this.downList) {
+      if (down.actualize(true)) return this._get();
     }
-    throw VALUE_NOT_CHANGED;
+    return engine.lambdaActualValueGet(this._lambda);
   }
 
-  public walkBefore() {
-    if (this._inputPrevSet) throw new Error('Circular pulling detected');
-    this._inputPrevSet = this.inputSet;
-    this.inputSet = new Set();
+  public walkDown() {
+    if (this._downPrevList) throw new Error('Circular pulling detected');
+    this._downPrevList = this.downList;
+    this.downList = new Set();
   }
 
-  public walkAfter() {
+  public walkUp() {
     // отписаться от неактуальных зависимостей
-    for (let inputPrev of this._inputPrevSet) {
-      if (!this.inputSet.has(inputPrev)) inputPrev.outputDelete(this);
+    for (let downPrev of this._downPrevList) {
+      if (!this.downList.has(downPrev)) downPrev.upDelete(this);
     }
-    this._inputPrevSet = undefined;
+    this._downPrevList = undefined;
   }
 
-  public inputAdd(e: IEmitter) {
-    this.inputSet.add(e);
+  public downAdd(e: IEmitter) {
+    this.downList.add(e);
   }
 
-  private _pull(): V {
-    const v = engine.walk(this, () => this._pullFn.call(this.context));
-    if (this._props.onPull && engine.job !== EEngineJob.Unlink) this._props.onPull(v);
+  private _get(): V {
+    const v = engine.walk(this, this._lambda);
+    if (this._props && this._props.onGet && engine.job !== EEngineJob.Unlink) this._props.onGet(v);
     return v;
   }
 }

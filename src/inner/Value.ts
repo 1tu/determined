@@ -1,104 +1,61 @@
-import { config } from '../config';
-import { EEngineJob, EValueState, IComparer, ILambda, ILambdaValue, IReciever, IValue, IValueProps, VALUE_NEXT_EMPTY, VALUE_NOT_CHANGED } from "./types";
-import { isFunction } from "../util/util";
-import { Emitter } from './Emitter';
+import { EEngineJob, EEmitterState, ILambda, IReciever, IValueBase, IValueProps, VALUE_NOT_CHANGED } from "./types";
 import { engine } from './Engine';
+import { ValueBase } from './ValueBase';
 
-export class Value<V = any> extends Emitter<IValueProps<V>> implements IValue<V> {
-  private _get?: ILambda<V>;
-  private _comparer: IComparer;
-  private _valueNext?: V | typeof VALUE_NEXT_EMPTY = VALUE_NEXT_EMPTY;
-  private _value?: V;
+export class Value<V = any> extends ValueBase<V, IValueProps<V>> implements IValueBase<V, IValueProps<V>> {
+  private _lambda: ILambda<V>;
   private _valuePrev?: V;
 
-  private _state = EValueState.Actual;
-  public get state() { return this._state; }
-  public set state(v: EValueState) {
-    if (this._state === v) return;
-    this._state = v;
-    if (v !== EValueState.Actual) this.changed();
-  }
-
   public error?: Error;
-
-  constructor(lv?: ILambdaValue<V>, props?: IValueProps<V>) {
-    super(props);
-    this._comparer = this.props.comparer || config.comparer;
-    if (lv !== undefined) this.set(lv);
-  }
-
-  public get() {
-    this.poll();
-    if (this.error) throw this.error;
-    return this._value;
-  }
 
   public getPrev() {
     return this._valuePrev;
   }
 
-  public override poll(skip?: boolean) {
-    super.poll(skip);
+  constructor(lv?: ILambda<V>, props?: IValueProps<V>) {
+    super(lv, props);
+    if (lv !== undefined) this.set(lv);
+  }
+
+  public override actualize(skipLink?: boolean) {
+    super._link(skipLink);
     // если выполняем задачу по разлинковке, нам нужно в любом случае проходить до самого корня
     // подграфа который перестал наблюдаться
     if (engine.job === EEngineJob.Unlink) {
-      if (this._get) this._get();
-    } else if (this.state !== EValueState.Actual) {
+      this._lambda();
+    } else if (this.state !== EEmitterState.Actual) {
       try {
-        return this._set(this._get ? this._get() : this._valueNext as V);
+        return this._set(this._lambda());
       } catch (e) {
-        if (e !== VALUE_NOT_CHANGED) {
-          this.error = e;
-          throw e;
-        }
+        this.error = e;
+        throw e;
       } finally {
-        this.state = EValueState.Actual;
+        this.state = EEmitterState.Actual;
       }
     }
+    if (this.error) throw this.error;
     return false;
   }
 
-  public set(lv: ILambdaValue<V>) {
+  public override set(lv: ILambda<V>) {
+    this._lambda = lv;
     this.error = undefined;
-    let isChanged = true;
-
-    if (isFunction(lv)) {
-      this._get = lv;
-      this._state = EValueState.Dirty;
-    } else {
-      isChanged = this._next(lv);
-      this._state = isChanged ? EValueState.Dirty : EValueState.Actual;
-    }
-
-    if (isChanged) this.changed();
-    return isChanged;
+    this.changed();
   }
 
-  public override outputDelete(r: IReciever) {
-    super.outputDelete(r);
-    if (!this.outputSet.size && this._get) {
-      this.state = EValueState.Dirty;
-      this._value = undefined;
-      this._valuePrev = undefined;
-    }
+  protected override _onUnobserved() {
+    this._value = undefined;
+    this._valuePrev = undefined;
+    super._onUnobserved();
   }
 
-  private _set(v?: V) {
+  // всплываем
+  protected override _set(v?: V) {
     this.error = undefined;
-    this._valueNext = VALUE_NEXT_EMPTY;
 
-    const isChanged = !this._comparer(v, this._value);
-    if (isChanged) {
-      this._valuePrev = this._value;
-      this._value = v;
-      if (this.props.onChange) this.props.onChange(this._value);
-    }
-    return isChanged;
-  }
-
-  private _next(v?: V) {
-    const isChanged = this._valueNext === VALUE_NEXT_EMPTY ? !this._comparer(v, this._value) : true;
-    this._valueNext = v;
+    const valuePrev = this._value;
+    const isChanged = super._set(v);
+    if (isChanged) this._valuePrev = valuePrev;
     return isChanged;
   }
 }

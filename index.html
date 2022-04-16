@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Тест</title>
   <script src="./dist/index.js"></script>
-  <script>
+  <!-- <script>
     const { Observer, Observable, Computed, transaction } = determined;
     const v1 = new Observable(5, { name: 'v1' });
     const v2 = new Observable(10, { name: 'v2' });
@@ -22,10 +22,106 @@
     const c5 = new Computed(() => c2.get() * c4.get(), { name: 'с5', onChange: (v) => console.log('c5', v) });
 
     const obs = new Observer(() => c3.get() + c5.get(), (v) => console.log('computed changed!', v));
-    v3.set(true);
+    // v3.set(true);
+    // v4.set(true);
+    transaction(() => {
+      v3.set(true);
+      v4.set(true);
+    })
+    transaction(() => {
+      v3.set(false);
+      v4.set(false);
+    })
     v3.set(false);
-    v4.set(true);
     v4.set(false);
+  </script> -->
+  <script>
+    const { Observer, Observable, Computed, transaction } = determined;
+
+    function test(layerCount, heat) {
+      const report = {};
+      let start = {
+        prop1: new Observable(1, { name: 'o1' }),
+        prop2: new Observable(2, { name: 'o2' }),
+        prop3: new Observable(3, { name: 'o3' }),
+        prop4: new Observable(4, { name: 'o4' })
+      };
+      let layer = start;
+
+      for (let i = layerCount; i--;) {
+        layer = ((prev) => {
+          const index = layerCount - i;
+          let next = {
+            prop1: new Computed(() => prev.prop2.get()),
+            prop2: new Computed(() => prev.prop1.get() - prev.prop3.get()),
+            prop3: new Computed(() => prev.prop2.get() + prev.prop4.get()),
+            prop4: new Computed(() => prev.prop3.get())
+          };
+
+          if (heat) {
+            new Observer(() => next.prop1.get());
+            new Observer(() => next.prop2.get());
+            new Observer(() => next.prop3.get());
+            new Observer(() => next.prop4.get());
+
+            next.prop1.get();
+            next.prop2.get();
+            next.prop3.get();
+            next.prop4.get();
+          }
+
+          return next;
+        })(layer);
+      }
+
+      let end = layer;
+
+
+      const obs = new Observer(() => {
+        return [
+          end.prop1.get(),
+          end.prop2.get(),
+          end.prop3.get(),
+          end.prop4.get()
+        ].join(',');
+      });
+
+      const beforeChange = [
+        end.prop1.get(),
+        end.prop2.get(),
+        end.prop3.get(),
+        end.prop4.get()
+      ];
+
+      let startTime = performance.now();
+
+      transaction(() => {
+        start.prop1.set(4);
+        start.prop2.set(3);
+        start.prop3.set(2);
+        start.prop4.set(1);
+        // console.log(end);
+        // console.log('Set end');
+      })
+
+      const afterChange = [
+        end.prop1.get(),
+        end.prop2.get(),
+        end.prop3.get(),
+        end.prop4.get()
+      ];
+
+      const recalculationTime = performance.now() - startTime;
+
+      console.log(`before change: ${beforeChange.join(',')}
+      after change: ${afterChange.join(',')}
+      calc time: ${recalculationTime}
+      `);
+      console.log(`calc time: ${recalculationTime}`);
+      // console.log(start);
+      // console.log(end);
+      obs.dispose();
+    }
   </script>
 
 </head>

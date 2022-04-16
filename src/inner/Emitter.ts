@@ -1,32 +1,52 @@
 import { engine } from './Engine';
-import { EEngineJob, IEmitter, IEmitterProps, IReciever } from "./types";
+import { EEngineJob, IRecieverBase, IEmitter, IEmitterProps, EEmitterState } from "./types";
 import { EMPTY_OBJECT } from '../util/util';
 
 export class Emitter<P extends IEmitterProps> implements IEmitter<P> {
+  public state = EEmitterState.Actual;
+
   // КТО зависит ОТ НАС
-  public outputSet = new Set<IReciever>();
+  public upList = new Set<IRecieverBase>();
+
+  public get isObserving() {
+    return !!this.upList.size;
+  }
 
   constructor(public props: P = EMPTY_OBJECT as P) { }
 
-  public poll(skip?: boolean) {
-    if (!skip) engine.emitterHandle(this);
+  public actualize(skipLink?: boolean) {
+    this._link(skipLink);
     return false;
   }
 
   public changed() {
-    if (!this.outputSet.size) return;
+    this.state = EEmitterState.Dirty;
+    if (!this.upList.size) return;
     engine.transaction(() => {
-      for (const output of this.outputSet) output.onInputChange();
+      for (const up of this.upList) up.onDownChanged();
     });
   }
 
-  public outputAdd(r: IReciever) {
-    this.outputSet.add(r);
+  public downChanged() {
+    this.changed();
   }
 
-  public outputDelete(r: IReciever) {
-    this.outputSet.delete(r);
-    // TODO: что если позже добавится output?
-    if (!this.outputSet.size && engine.job === EEngineJob.Link) engine.emitter2Unlink(this);
+  public upAdd(r: IRecieverBase) {
+    this.upList.add(r);
+  }
+
+  public upDelete(r: IRecieverBase) {
+    this.upList.delete(r);
+    // TODO: что если позже добавится up?
+    if (!this.isObserving) this._onUnobserved();
+  }
+
+  protected _onUnobserved() {
+    this.state = EEmitterState.Dirty;
+    if (engine.job === EEngineJob.Link) engine.emitter2Unlink(this);
+  }
+
+  protected _link(skipLink?: boolean) {
+    if (!skipLink) engine.emitterHandle(this);
   }
 }

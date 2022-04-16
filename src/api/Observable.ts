@@ -1,3 +1,3 @@
-import { Value } from '../inner/Value';
+import { ValueBase } from '../inner/ValueBase';
 
-export const Observable = Value;
+export const Observable = ValueBase;
